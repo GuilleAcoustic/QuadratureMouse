@@ -1,7 +1,9 @@
+#include <Mouse.h>
+
 /* ================================================================================
    Author  : GuilleAcoustic
    Date    : 2015-05-22
-   Revision: V1.0
+   Revision: V1.1
    Purpose : Opto-mechanical trackball firmware
    --------------------------------------------------------------------------------
    Wiring informations: Sparkfun Pro micro (Atmega32u4)
@@ -15,16 +17,36 @@
      - Grey   : Switch 1                     |   Pin: PB3
      - White  : Switch 2                     |   Pin: PB2
      - Black  : Switch 3                     |   Pin: PB1
+   --------------------------------------------------------------------------------
+   Latest additions:
+     - 2016-01-28: Software switch debouncing
    ================================================================================ */
 
 // =================================================================================
 // Type definition
 // =================================================================================
-typedef struct
+
+#ifndef DEBOUNCE_THREASHOLD
+#define DEBOUNCE_THREASHOLD 50
+#endif
+
+// =================================================================================
+// Type definition
+// =================================================================================
+typedef struct ENCODER_
 {
-  int8_t  coordinate = 0;
-  uint8_t index      = 0;
+  int8_t  coordinate;
+  uint8_t index;
 } ENCODER_;
+
+typedef struct BUTTON_
+{
+  boolean state;
+  boolean needUpdate;
+  char    button;
+  byte    bitmask;
+  long    lastDebounceTime;
+} BUTTON_;
 
 // =================================================================================
 // Constant definition
@@ -34,11 +56,15 @@ const int8_t lookupTable[] = {0, 1, -1, 0, -1, 0, 0, 1, 1, 0, 0, -1, 0, -1,  1, 
 // =================================================================================
 // Volatile variables
 // =================================================================================
-volatile ENCODER_ xAxis;
-volatile ENCODER_ yAxis;
-volatile boolean leftButton   = false;
-volatile boolean middleButton = false;
-volatile boolean rightButton  = false;
+volatile ENCODER_ xAxis = {0, 0};
+volatile ENCODER_ yAxis = {0, 0};
+
+// =================================================================================
+// Global variables
+// =================================================================================
+BUTTON_ leftButton   = {false, false, MOUSE_LEFT,   0b1000, 0};
+BUTTON_ middleButton = {false, false, MOUSE_MIDDLE, 0b0010, 0};
+BUTTON_ rightButton  = {false, false, MOUSE_RIGHT,  0b0100, 0};
 
 // =================================================================================
 // Setup function
@@ -71,53 +97,20 @@ void loop()
   // ---------------------------------
   // Left mouse button state update
   // ---------------------------------
-  if (!(PINB & 0b1000) && !leftButton)
-  {
-    Mouse.press(MOUSE_LEFT);
-    leftButton = true;
-  }
-  else
-  {
-    if ((PINB & 0b1000) && leftButton)
-    {
-      Mouse.release(MOUSE_LEFT);
-      leftButton = false;
-    }
-  }
+  ReadButton(leftButton);
+  UpdateButton(leftButton);
 
   // ---------------------------------
   // Right mouse button state update
   // ---------------------------------  
-  if (!(PINB & 0b0100) && !rightButton)
-  {
-    Mouse.press(MOUSE_RIGHT);
-    rightButton = true;
-  }
-  else
-  {
-    if ((PINB & 0b0100) && rightButton)
-    {
-      Mouse.release(MOUSE_RIGHT);
-      rightButton = false;
-    }
-  }
+  ReadButton(rightButton);
+  UpdateButton(rightButton);
   
   // ---------------------------------
   // Middle mouse button state update
   // ---------------------------------
-  if (!(PINB & 0b0010) && !middleButton)
-  {
-    Mouse.press(MOUSE_MIDDLE);
-    middleButton = true;
-  }
-  else
-  {
-    if ((PINB & 0b0010) && middleButton)
-    {
-      Mouse.release(MOUSE_MIDDLE);
-      middleButton = false;
-    }
-  }
+  ReadButton(middleButton);
+  UpdateButton(middleButton);
 
   // Wait a little before next update
   delay(10);
@@ -138,4 +131,39 @@ void ISR_HANDLER_Y()
   // Build the LUT index from previous and new data
   yAxis.index       = (yAxis.index << 2) | ((PIND & 0b00001100) >> 2);
   yAxis.coordinate += lookupTable[yAxis.index & 0b00001111];
+}
+
+// =================================================================================
+// Functions
+// =================================================================================
+void ReadButton(BUTTON_& button)
+{
+  // Variables
+  long    currentime;
+  boolean switchState;
+  boolean debounced;
+  
+  // Get current time
+  currentime = millis();
+  debounced  = (currentime - button.lastDebounceTime > DEBOUNCE_THREASHOLD);
+
+  // Get current switch state
+  switchState = !(PINB & button.bitmask);
+
+  // Button state acquisition
+  if ((switchState != button.state) && debounced)
+  {
+    button.lastDebounceTime = currentime;
+    button.state            = switchState;
+    button.needUpdate       = true;
+  }
+}
+
+void UpdateButton(BUTTON_& button)
+{
+  if (button.needUpdate)
+  {
+    (button.state) ? Mouse.press(button.button) : Mouse.release(button.button);
+    button.needUpdate = false;
+  }
 }
