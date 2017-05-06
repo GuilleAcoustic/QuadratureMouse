@@ -35,17 +35,17 @@
 // =================================================================================
 typedef struct ENCODER_
 {
-  int8_t  coordinate;
-  uint8_t index;
+    int8_t  coordinate;
+    uint8_t index;
 } ENCODER_;
 
 typedef struct BUTTON_
 {
-  boolean state;
-  boolean needUpdate;
-  char    button;
-  byte    bitmask;
-  long    lastDebounceTime;
+    boolean state;
+    boolean needUpdate;
+    char    button;
+    byte    bitmask;
+    long    lastDebounceTime;
 } BUTTON_;
 
 // =================================================================================
@@ -71,14 +71,14 @@ BUTTON_ rightButton  = {false, false, MOUSE_RIGHT,  0b0100, 0};
 // =================================================================================
 void setup()
 {
-  // Attach interruption to encoders channels
-  attachInterrupt(0, ISR_HANDLER_X, CHANGE);
-  attachInterrupt(1, ISR_HANDLER_X, CHANGE);
-  attachInterrupt(2, ISR_HANDLER_Y, CHANGE);
-  attachInterrupt(3, ISR_HANDLER_Y, CHANGE);
-  
-  // Start the mouse function
-  Mouse.begin();
+    // Attach interruption to encoders channels
+    attachInterrupt(0, ISR_HANDLER_X, CHANGE);
+    attachInterrupt(1, ISR_HANDLER_X, CHANGE);
+    attachInterrupt(2, ISR_HANDLER_Y, CHANGE);
+    attachInterrupt(3, ISR_HANDLER_Y, CHANGE);
+
+    // Start the mouse function
+    Mouse.begin();
 }
 
 // =================================================================================
@@ -86,34 +86,34 @@ void setup()
 // =================================================================================
 void loop()
 {
-  // Update mouse coordinates
-  if (xAxis.coordinate != 0 || yAxis.coordinate != 0)
-  {
-    Mouse.move(xAxis.coordinate, yAxis.coordinate);
-    xAxis.coordinate = 0;
-    yAxis.coordinate = 0;
-  }
+    // Update mouse coordinates
+    if (xAxis.coordinate != 0 || yAxis.coordinate != 0)
+    {
+        Mouse.move(xAxis.coordinate, yAxis.coordinate);
+        xAxis.coordinate = 0;
+        yAxis.coordinate = 0;
+    }
 
-  // ---------------------------------
-  // Left mouse button state update
-  // ---------------------------------
-  ReadButton(leftButton);
-  UpdateButton(leftButton);
+    // ---------------------------------
+    // Left mouse button state update
+    // ---------------------------------
+    ReadButton(leftButton);
+    UpdateButton(leftButton);
 
-  // ---------------------------------
-  // Right mouse button state update
-  // ---------------------------------  
-  ReadButton(rightButton);
-  UpdateButton(rightButton);
-  
-  // ---------------------------------
-  // Middle mouse button state update
-  // ---------------------------------
-  ReadButton(middleButton);
-  UpdateButton(middleButton);
+    // ---------------------------------
+    // Right mouse button state update
+    // ---------------------------------
+    ReadButton(rightButton);
+    UpdateButton(rightButton);
 
-  // Wait a little before next update
-  delay(10);
+    // ---------------------------------
+    // Middle mouse button state update
+    // ---------------------------------
+    ReadButton(middleButton);
+    UpdateButton(middleButton);
+
+    // Wait a little before next update
+    delay(10);
 }
 
 // =================================================================================
@@ -121,16 +121,16 @@ void loop()
 // =================================================================================
 void ISR_HANDLER_X()
 {
-  // Build the LUT index from previous and new data
-  xAxis.index       = (xAxis.index << 2) | ((PIND & 0b00000011) >> 0);
-  xAxis.coordinate += lookupTable[xAxis.index & 0b00001111];
+    // Build the LUT index from previous and new data
+    xAxis.index       = (xAxis.index << 2) | ((PIND & 0b00000011) >> 0);
+    xAxis.coordinate += lookupTable[xAxis.index & 0b00001111];
 }
 
 void ISR_HANDLER_Y()
 {
-  // Build the LUT index from previous and new data
-  yAxis.index       = (yAxis.index << 2) | ((PIND & 0b00001100) >> 2);
-  yAxis.coordinate += lookupTable[yAxis.index & 0b00001111];
+    // Build the LUT index from previous and new data
+    yAxis.index       = (yAxis.index << 2) | ((PIND & 0b00001100) >> 2);
+    yAxis.coordinate += lookupTable[yAxis.index & 0b00001111];
 }
 
 // =================================================================================
@@ -138,32 +138,25 @@ void ISR_HANDLER_Y()
 // =================================================================================
 void ReadButton(BUTTON_& button)
 {
-  // Variables
-  long    currentime;
-  boolean switchState;
-  boolean debounced;
-  
-  // Get current time
-  currentime = millis();
-  debounced  = (currentime - button.lastDebounceTime > DEBOUNCE_THREASHOLD);
+    // Variables
+    long    currentime  = millis();
+    boolean switchState = !(PINB & button.bitmask);
+    boolean debounced   = (currentime - button.lastDebounceTime > DEBOUNCE_THREASHOLD);
 
-  // Get current switch state
-  switchState = !(PINB & button.bitmask);
-
-  // Button state acquisition
-  if ((switchState != button.state) && debounced)
-  {
-    button.lastDebounceTime = currentime;
-    button.state            = switchState;
-    button.needUpdate       = true;
-  }
+    // Button state acquisition
+    if ((switchState != button.state) && debounced)
+    {
+        button.lastDebounceTime = currentime;
+        button.state            = switchState;
+        button.needUpdate       = true;
+    }
 }
 
 void UpdateButton(BUTTON_& button)
 {
-  if (button.needUpdate)
-  {
-    (button.state) ? Mouse.press(button.button) : Mouse.release(button.button);
-    button.needUpdate = false;
-  }
+    if (button.needUpdate)
+    {
+        (button.state) ? Mouse.press(button.button) : Mouse.release(button.button);
+        button.needUpdate = false;
+    }
 }
