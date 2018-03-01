@@ -23,11 +23,11 @@
    ================================================================================ */
 
 // =================================================================================
-// Type definition
+// Preprocessor directives
 // =================================================================================
 
-#ifndef DEBOUNCE_THREASHOLD
-#define DEBOUNCE_THREASHOLD 50
+#ifndef DEBOUNCE_THRESHOLD
+#define DEBOUNCE_THRESHOLD 50
 #endif
 
 // =================================================================================
@@ -141,7 +141,7 @@ void ReadButton(BUTTON_& button)
     // Variables
     long    currentime  = millis();
     boolean switchState = !(PINB & button.bitmask);
-    boolean debounced   = (currentime - button.lastDebounceTime > DEBOUNCE_THREASHOLD);
+    boolean debounced   = (currentime - button.lastDebounceTime > DEBOUNCE_THRESHOLD);
 
     // Button state acquisition
     if ((switchState != button.state) && debounced)
